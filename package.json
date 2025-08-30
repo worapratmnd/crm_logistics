@@ -1,0 +1,27 @@
+{
+  "name": "logistics-crm-mvp",
+  "version": "1.0.0",
+  "description": "Logistics CRM MVP - Monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@logistics-crm/web",
+    "build": "npm run build --workspace=@logistics-crm/web",
+    "preview": "npm run preview --workspace=@logistics-crm/web",
+    "type-check": "npm run type-check --workspace=@logistics-crm/web",
+    "lint": "npm run lint --workspace=@logistics-crm/web",
+    "clean": "npm run clean --workspaces --if-present",
+    "install-all": "npm install",
+    "build-all": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
