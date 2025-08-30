@@ -11,12 +11,19 @@ export interface User {
 
 export interface Customer {
   id: string;
+  created_at: string;
   name: string;
   email: string;
-  phone?: string;
-  address?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  phone: string;
+}
+
+export interface Job {
+  id: string;
+  created_at: string;
+  customer_id: string;
+  description: string;
+  status: 'New' | 'In Progress' | 'Done';
+  customers?: Customer;
 }
 
 export interface Shipment {

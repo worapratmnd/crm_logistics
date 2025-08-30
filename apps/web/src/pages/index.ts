@@ -1,2 +1,3 @@
-// Pages will be added here by the frontend developer
-export {};
+// Page Components
+export { CustomersPage } from './CustomersPage';
+export { JobsPage } from './JobsPage';

@@ -20,7 +20,10 @@
       "Bash(curl:*)",
       "Bash(find:*)",
       "Bash(cat:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(ls:*)",
+      "Bash(timeout 15s npm run dev)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

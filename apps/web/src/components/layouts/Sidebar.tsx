@@ -1,17 +1,29 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface NavigationItem {
   label: string;
   icon?: string;
-  href?: string;
+  href: string;
 }
 
 export const Sidebar: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const navigationItems: NavigationItem[] = [
-    { label: 'Dashboard' },
-    { label: 'ลูกค้า' }, // Customers
-    { label: 'รายการงาน' }, // Tasks/Jobs
+    { label: 'Dashboard', href: '/' },
+    { label: 'ลูกค้า', href: '/customers' }, // Customers
+    { label: 'รายการงาน', href: '/jobs' }, // Tasks/Jobs
   ];
+
+  const handleNavigation = (href: string) => {
+    navigate(href);
+  };
+
+  const isActiveRoute = (href: string) => {
+    return location.pathname === href;
+  };
 
   return (
     <aside className="w-64 bg-white shadow-lg border-r border-gray-200">
@@ -28,11 +40,18 @@ export const Sidebar: React.FC = () => {
           <ul className="space-y-2">
             {navigationItems.map((item, index) => (
               <li key={index}>
-                <div className="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 cursor-not-allowed transition-colors duration-200">
+                <button
+                  onClick={() => handleNavigation(item.href)}
+                  className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors duration-200 text-left ${
+                    isActiveRoute(item.href)
+                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-500'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
                   <span className="text-sm font-medium">
                     {item.label}
                   </span>
-                </div>
+                </button>
               </li>
             ))}
           </ul>
