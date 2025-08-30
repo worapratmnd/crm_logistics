@@ -1,2 +1,3 @@
-// Components will be added here by the frontend developer
-export {};
+// Layout Components
+export { MainLayout } from './layouts/MainLayout';
+export { Sidebar } from './layouts/Sidebar';
