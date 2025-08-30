@@ -1,5 +1,6 @@
-import React from 'react';
-import { Job, Customer } from '@shared/types';
+import React, { useState } from 'react';
+import { Job } from '@shared/types';
+import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
 import {
   Table,
@@ -9,111 +10,27 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/table';
-
-// Mock customer data for relationships
-const mockCustomers: Customer[] = [
-  {
-    id: '1',
-    created_at: '2025-08-28T10:00:00.000Z',
-    name: 'บริษัท อาบีซี จำกัด',
-    email: 'contact@abc.co.th',
-    phone: '02-123-4567',
-  },
-  {
-    id: '2',
-    created_at: '2025-08-27T14:30:00.000Z',
-    name: 'ห้างหุ้นส่วนจำกัด เอ็กซ์วายแซด',
-    email: 'info@xyz.com',
-    phone: '02-987-6543',
-  },
-  {
-    id: '3',
-    created_at: '2025-08-26T09:15:00.000Z',
-    name: 'บริษัท เดฟ อิมปอร์ต-เอ็กซ์ปอร์ต จำกัด',
-    email: 'sales@dev-import.co.th',
-    phone: '02-555-1234',
-  },
-  {
-    id: '4',
-    created_at: '2025-08-25T16:45:00.000Z',
-    name: 'โลจิสติกส์ พลัส จำกัด',
-    email: 'hello@logisticplus.th',
-    phone: '02-777-8888',
-  },
-];
-
-// Mock job data with customer relationships
-const mockJobs: Job[] = [
-  {
-    id: 'job-1',
-    created_at: '2025-08-30T08:00:00.000Z',
-    customer_id: '1',
-    description: 'ขนส่งสินค้าจากกรุงเทพฯ ไปยังเชียงใหม่',
-    status: 'New',
-    customers: mockCustomers.find(c => c.id === '1'),
-  },
-  {
-    id: 'job-2',
-    created_at: '2025-08-29T14:30:00.000Z',
-    customer_id: '2',
-    description: 'นำเข้าสินค้าจากต่างประเทศ - ผ่านพิธีการศุลกากร',
-    status: 'In Progress',
-    customers: mockCustomers.find(c => c.id === '2'),
-  },
-  {
-    id: 'job-3',
-    created_at: '2025-08-29T10:15:00.000Z',
-    customer_id: '1',
-    description: 'จัดส่งสินค้าทางเรือ กรุงเทพฯ-ภูเก็ต',
-    status: 'Done',
-    customers: mockCustomers.find(c => c.id === '1'),
-  },
-  {
-    id: 'job-4',
-    created_at: '2025-08-28T16:45:00.000Z',
-    customer_id: '3',
-    description: 'ขนส่งสินค้าอุตสาหกรรม - รายการพิเศษ',
-    status: 'In Progress',
-    customers: mockCustomers.find(c => c.id === '3'),
-  },
-  {
-    id: 'job-5',
-    created_at: '2025-08-28T09:30:00.000Z',
-    customer_id: '4',
-    description: 'บริการจัดเก็บและกระจายสินค้า',
-    status: 'New',
-    customers: mockCustomers.find(c => c.id === '4'),
-  },
-  {
-    id: 'job-6',
-    created_at: '2025-08-27T13:20:00.000Z',
-    customer_id: '2',
-    description: 'ขนส่งด่วนพิเศษ - Same Day Delivery',
-    status: 'Done',
-    customers: mockCustomers.find(c => c.id === '2'),
-  },
-  {
-    id: 'job-7',
-    created_at: '2025-08-26T11:00:00.000Z',
-    customer_id: '3',
-    description: 'บริการขนส่งระหว่างประเทศ ไทย-มาเลเซีย',
-    status: 'In Progress',
-    customers: mockCustomers.find(c => c.id === '3'),
-  },
-  {
-    id: 'job-8',
-    created_at: '2025-08-25T15:15:00.000Z',
-    customer_id: '4',
-    description: 'จัดส่งสินค้าเกษตร - ต้องคงความเย็น',
-    status: 'Done',
-    customers: mockCustomers.find(c => c.id === '4'),
-  },
-];
+import { AddJobDialog } from '../components/dialogs/AddJobDialog';
+import { JobDetailDialog } from '../components/dialogs/JobDetailDialog';
 
 export const JobsPage: React.FC = () => {
-  const handleAddJob = () => {
-    // Placeholder for future implementation
-    console.log('Add job clicked');
+  const { jobs, loading } = useData();
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [jobDetailOpen, setJobDetailOpen] = useState(false);
+
+  const handleJobAdded = () => {
+    // Data will be updated automatically through context
+    console.log('Job added successfully');
+  };
+
+  const handleJobUpdated = () => {
+    // Data will be updated automatically through context
+    console.log('Job updated successfully');
+  };
+
+  const handleJobRowClick = (jobId: string) => {
+    setSelectedJobId(jobId);
+    setJobDetailOpen(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -158,9 +75,11 @@ export const JobsPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-800">รายการงาน</h1>
           <p className="text-gray-600 mt-1">จัดการงานขนส่งและโลจิสติกส์</p>
         </div>
-        <Button onClick={handleAddJob} className="bg-green-600 hover:bg-green-700">
-          สร้างงานใหม่
-        </Button>
+        <AddJobDialog onJobAdded={handleJobAdded}>
+          <Button className="bg-green-600 hover:bg-green-700">
+            สร้างงานใหม่
+          </Button>
+        </AddJobDialog>
       </div>
 
       {/* Table */}
@@ -175,30 +94,56 @@ export const JobsPage: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockJobs.map((job) => (
-              <TableRow key={job.id}>
-                <TableCell className="font-medium max-w-xs">
-                  <div className="truncate" title={job.description}>
-                    {job.description}
-                  </div>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-8">
+                  กำลังโหลดข้อมูล...
                 </TableCell>
-                <TableCell>{job.customers?.name || 'ไม่พบข้อมูลลูกค้า'}</TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                    {getStatusLabel(job.status)}
-                  </span>
-                </TableCell>
-                <TableCell>{formatDate(job.created_at)}</TableCell>
               </TableRow>
-            ))}
+            ) : jobs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-8">
+                  ยังไม่มีข้อมูลงาน
+                </TableCell>
+              </TableRow>
+            ) : (
+              jobs.map((job) => (
+                <TableRow 
+                  key={job.id} 
+                  className="cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => handleJobRowClick(job.id)}
+                >
+                  <TableCell className="font-medium max-w-xs">
+                    <div className="truncate" title={job.description}>
+                      {job.description}
+                    </div>
+                  </TableCell>
+                  <TableCell>{job.customers?.name || 'ไม่พบข้อมูลลูกค้า'}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
+                      {getStatusLabel(job.status)}
+                    </span>
+                  </TableCell>
+                  <TableCell>{formatDate(job.created_at)}</TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
 
       {/* Footer info */}
       <div className="text-sm text-gray-500">
-        แสดงงานทั้งหมด {mockJobs.length} รายการ
+        แสดงงานทั้งหมด {jobs.length} รายการ
       </div>
+
+      {/* Job Detail Dialog */}
+      <JobDetailDialog
+        jobId={selectedJobId}
+        open={jobDetailOpen}
+        onOpenChange={setJobDetailOpen}
+        onJobUpdated={handleJobUpdated}
+      />
     </div>
   );
 };

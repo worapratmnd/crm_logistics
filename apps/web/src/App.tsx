@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { MainLayout } from './components';
 import { CustomersPage, JobsPage } from './pages';
+import { DataProvider } from './contexts/DataContext';
 import './App.css';
 
 // Dashboard component (placeholder for existing dashboard)
@@ -38,15 +39,17 @@ const Dashboard: React.FC = () => {
 
 function App() {
   return (
-    <Router>
-      <MainLayout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/customers" element={<CustomersPage />} />
-          <Route path="/jobs" element={<JobsPage />} />
-        </Routes>
-      </MainLayout>
-    </Router>
+    <DataProvider>
+      <Router>
+        <MainLayout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/jobs" element={<JobsPage />} />
+          </Routes>
+        </MainLayout>
+      </Router>
+    </DataProvider>
   );
 }
 
