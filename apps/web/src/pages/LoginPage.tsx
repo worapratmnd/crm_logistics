@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link } from 'react-router-dom';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 import {
   Form,
@@ -16,6 +17,7 @@ import {
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Alert, AlertDescription } from '../components/ui/alert';
 
 // Form validation schema
 const loginSchema = z.object({
@@ -33,7 +35,15 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const navigate = useNavigate();
+  
+  const {
+    signIn,
+    loading,
+    error,
+    clearError,
+    isAuthenticated,
+  } = useAuth();
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -43,17 +53,34 @@ export const LoginPage: React.FC = () => {
     },
   });
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Clear error when form values change
+  useEffect(() => {
+    if (error) {
+      const subscription = form.watch(() => {
+        clearError();
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [error, form, clearError]);
+
   const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true);
     try {
-      // TODO: Implement actual login logic here
-      console.log('Login attempt:', data);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const result = await signIn(data);
+      
+      if (result.user) {
+        // Success - navigation will happen via useEffect above
+        console.log('Login successful:', result.user);
+      }
+      // Error handling is managed by the auth context
     } catch (error) {
       console.error('Login failed:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -85,6 +112,14 @@ export const LoginPage: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Error Alert */}
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 {/* Email Field */}
@@ -99,7 +134,7 @@ export const LoginPage: React.FC = () => {
                           type="email"
                           placeholder="กรุณากรอกอีเมลของคุณ"
                           {...field}
-                          disabled={isLoading}
+                          disabled={loading}
                           className="h-11"
                         />
                       </FormControl>
@@ -121,14 +156,14 @@ export const LoginPage: React.FC = () => {
                             type={showPassword ? 'text' : 'password'}
                             placeholder="กรุณากรอกรหัสผ่านของคุณ"
                             {...field}
-                            disabled={isLoading}
+                            disabled={loading}
                             className="h-11 pr-10"
                           />
                           <button
                             type="button"
                             className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                             onClick={togglePasswordVisibility}
-                            disabled={isLoading}
+                            disabled={loading}
                           >
                             {showPassword ? (
                               <EyeOff className="h-4 w-4" />
@@ -157,9 +192,9 @@ export const LoginPage: React.FC = () => {
                 <Button
                   type="submit"
                   className="w-full h-11"
-                  disabled={isLoading}
+                  disabled={loading}
                 >
-                  {isLoading ? (
+                  {loading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                       กำลังเข้าสู่ระบบ...

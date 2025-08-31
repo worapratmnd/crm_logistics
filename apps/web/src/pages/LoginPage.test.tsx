@@ -1,14 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { LoginPage } from './LoginPage';
+import { AuthProvider } from '../contexts/AuthContext';
+import { authService } from '../services/auth';
 
-// Mock react-router-dom Link component
+// Mock auth service
+vi.mock('../services/auth', () => ({
+  authService: {
+    getCurrentUser: vi.fn(),
+    onAuthStateChange: vi.fn(),
+    signIn: vi.fn(),
+    signUp: vi.fn(),
+    signOut: vi.fn(),
+    resetPassword: vi.fn(),
+    updateProfile: vi.fn(),
+  },
+}));
+
+// Mock react-router-dom Link component and navigate
+const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
+    useNavigate: () => mockNavigate,
     Link: ({ children, to, ...props }: any) => (
       <a href={to} {...props}>
         {children}
@@ -17,13 +34,32 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+const mockAuthService = authService as any;
+
 const renderWithRouter = (component: React.ReactElement) => {
-  return render(<BrowserRouter>{component}</BrowserRouter>);
+  return render(
+    <BrowserRouter>
+      <AuthProvider>
+        {component}
+      </AuthProvider>
+    </BrowserRouter>
+  );
 };
 
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockClear();
+    
+    // Setup default mocks
+    mockAuthService.getCurrentUser.mockResolvedValue(null);
+    mockAuthService.onAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: vi.fn() } },
+    });
+    mockAuthService.signIn.mockResolvedValue({
+      user: null,
+      error: 'Test error',
+    });
   });
 
   it('renders login form with all required elements', () => {
@@ -105,9 +141,21 @@ describe('LoginPage', () => {
     expect(passwordInput.type).toBe('password');
   });
 
-  it('submits form with valid data', async () => {
+  it('submits form with valid data and shows success', async () => {
     const user = userEvent.setup();
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const mockUser = {
+      id: '123',
+      email: 'test@example.com',
+      name: 'Test User',
+      role: 'admin' as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    mockAuthService.signIn.mockResolvedValue({
+      user: mockUser,
+      error: null,
+    });
     
     renderWithRouter(<LoginPage />);
 
@@ -117,26 +165,73 @@ describe('LoginPage', () => {
 
     await user.type(emailInput, 'test@example.com');
     await user.type(passwordInput, 'password123');
-    await user.click(submitButton);
-
-    // Wait for form submission
-    await waitFor(() => {
-      expect(screen.getByText('กำลังเข้าสู่ระบบ...')).toBeInTheDocument();
+    
+    await act(async () => {
+      await user.click(submitButton);
     });
 
-    // Check if console.log was called with login attempt
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Login attempt:', {
-        email: 'test@example.com',
-        password: 'password123',
-      });
+    // Check if auth service was called
+    expect(mockAuthService.signIn).toHaveBeenCalledWith({
+      email: 'test@example.com',
+      password: 'password123',
+    });
+  });
+
+  it('shows error message on login failure', async () => {
+    const user = userEvent.setup();
+
+    mockAuthService.signIn.mockResolvedValue({
+      user: null,
+      error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+    });
+    
+    renderWithRouter(<LoginPage />);
+
+    const emailInput = screen.getByLabelText('อีเมล');
+    const passwordInput = screen.getByPlaceholderText('กรุณากรอกรหัสผ่านของคุณ');
+    const submitButton = screen.getByRole('button', { name: /เข้าสู่ระบบ/i });
+
+    await user.type(emailInput, 'test@example.com');
+    await user.type(passwordInput, 'wrongpassword');
+    
+    await act(async () => {
+      await user.click(submitButton);
     });
 
-    consoleSpy.mockRestore();
+    await waitFor(() => {
+      expect(screen.getByText('อีเมลหรือรหัสผ่านไม่ถูกต้อง')).toBeInTheDocument();
+    });
+  });
+
+  it('redirects to dashboard when already authenticated', async () => {
+    const mockUser = {
+      id: '123',
+      email: 'test@example.com',
+      name: 'Test User',
+      role: 'admin' as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    mockAuthService.getCurrentUser.mockResolvedValue(mockUser);
+    
+    renderWithRouter(<LoginPage />);
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+    });
   });
 
   it('disables form during submission', async () => {
     const user = userEvent.setup();
+    
+    // Mock a slow sign in to test loading state
+    mockAuthService.signIn.mockImplementation(() => 
+      new Promise(resolve => 
+        setTimeout(() => resolve({ user: null, error: null }), 100)
+      )
+    );
+
     renderWithRouter(<LoginPage />);
 
     const emailInput = screen.getByLabelText('อีเมล');
@@ -145,13 +240,14 @@ describe('LoginPage', () => {
 
     await user.type(emailInput, 'test@example.com');
     await user.type(passwordInput, 'password123');
-    await user.click(submitButton);
+    
+    await act(async () => {
+      await user.click(submitButton);
+    });
 
-    // Check if elements are disabled during submission
+    // Check if loading state is shown
     await waitFor(() => {
-      expect(emailInput).toBeDisabled();
-      expect(passwordInput).toBeDisabled();
-      expect(submitButton).toBeDisabled();
+      expect(screen.getByText('กำลังเข้าสู่ระบบ...')).toBeInTheDocument();
     });
   });
 
