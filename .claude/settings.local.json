@@ -26,7 +26,10 @@
       "mcp__ide__getDiagnostics",
       "Bash(npm test)",
       "Bash(node:*)",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Bash(npm run test:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []
