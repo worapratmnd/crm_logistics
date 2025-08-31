@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -35,7 +35,6 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = React.useState(false);
-  const navigate = useNavigate();
   
   const {
     signIn,
@@ -43,6 +42,7 @@ export const LoginPage: React.FC = () => {
     error,
     clearError,
     isAuthenticated,
+    navigateAfterLogin,
   } = useAuth();
 
   const form = useForm<LoginFormData>({
@@ -56,9 +56,9 @@ export const LoginPage: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/', { replace: true });
+      navigateAfterLogin();
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigateAfterLogin]);
 
   // Clear error when form values change
   useEffect(() => {

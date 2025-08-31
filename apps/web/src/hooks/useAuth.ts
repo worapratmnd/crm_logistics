@@ -1,10 +1,23 @@
 import { useCallback, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth as useAuthContext } from '../contexts/AuthContext';
 import { User } from '../../../../packages/shared/types';
+import { 
+  hasRoutePermission,
+  isProtectedRoute,
+  isPublicRoute,
+  validateReturnUrl,
+  createLoginUrl,
+  sanitizePathname,
+  updateLastActivity,
+  clearAuthStorage
+} from '../utils/routeUtils';
 
 // Extended hook with additional utilities and helper functions
 export const useAuth = () => {
   const auth = useAuthContext();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Helper to check if user has specific role or higher
   const hasRole = useCallback((requiredRole: User['role']): boolean => {
@@ -145,11 +158,126 @@ export const useAuth = () => {
   // Helper to safely sign out with error handling
   const safeSignOut = useCallback(async () => {
     try {
+      clearAuthStorage();
       await auth.signOut();
     } catch (error) {
       console.error('Safe sign out error:', error);
     }
   }, [auth]);
+
+  // Route protection utilities
+  const canAccessRoute = useCallback((pathname?: string): boolean => {
+    const targetPath = pathname || location.pathname;
+    return hasRoutePermission(targetPath, auth.user?.role || null);
+  }, [auth.user?.role, location.pathname]);
+
+  const canAccessCurrentRoute = useCallback((): boolean => {
+    return canAccessRoute(location.pathname);
+  }, [canAccessRoute, location.pathname]);
+
+  const isCurrentRouteProtected = useCallback((): boolean => {
+    return isProtectedRoute(location.pathname);
+  }, [location.pathname]);
+
+  const isCurrentRoutePublic = useCallback((): boolean => {
+    return isPublicRoute(location.pathname);
+  }, [location.pathname]);
+
+  // Secure navigation with authentication checks
+  const secureNavigate = useCallback((to: string, options?: any) => {
+    const sanitizedPath = sanitizePathname(to);
+    
+    // Check authentication for protected routes
+    if (!auth.isAuthenticated && isProtectedRoute(sanitizedPath)) {
+      const loginUrl = createLoginUrl(sanitizedPath);
+      navigate(loginUrl, { replace: true });
+      return false;
+    }
+    
+    // Check permissions
+    if (!hasRoutePermission(sanitizedPath, auth.user?.role || null)) {
+      console.warn('User does not have permission to access:', sanitizedPath);
+      return false;
+    }
+    
+    navigate(sanitizedPath, options);
+    return true;
+  }, [auth.isAuthenticated, auth.user?.role, navigate]);
+
+  // Navigate to login with return URL
+  const navigateToLogin = useCallback((returnUrl?: string) => {
+    const loginUrl = createLoginUrl(returnUrl || location.pathname);
+    navigate(loginUrl, { replace: true });
+  }, [navigate, location.pathname]);
+
+  // Navigate after successful login
+  const navigateAfterLogin = useCallback(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const returnUrl = urlParams.get('returnUrl');
+    const validReturnUrl = validateReturnUrl(returnUrl);
+    
+    if (validReturnUrl) {
+      navigate(validReturnUrl, { replace: true });
+    } else {
+      navigate('/', { replace: true });
+    }
+  }, [navigate, location.search]);
+
+  // Check if user should be redirected from current route
+  const shouldRedirectFromCurrentRoute = useCallback((): { redirect: boolean; to: string } => {
+    const currentPath = location.pathname;
+    
+    // Authenticated user on login page should be redirected
+    if (auth.isAuthenticated && currentPath === '/login') {
+      const urlParams = new URLSearchParams(location.search);
+      const returnUrl = urlParams.get('returnUrl');
+      const validReturnUrl = validateReturnUrl(returnUrl);
+      
+      return {
+        redirect: true,
+        to: validReturnUrl || '/'
+      };
+    }
+    
+    // Unauthenticated user on protected route should be redirected to login
+    if (!auth.isAuthenticated && isProtectedRoute(currentPath)) {
+      return {
+        redirect: true,
+        to: createLoginUrl(currentPath)
+      };
+    }
+    
+    return { redirect: false, to: '' };
+  }, [auth.isAuthenticated, location]);
+
+  // Update user activity
+  const trackActivity = useCallback(() => {
+    if (auth.isAuthenticated) {
+      updateLastActivity();
+    }
+  }, [auth.isAuthenticated]);
+
+  // Enhanced sign out with navigation
+  const signOutAndRedirect = useCallback(async (redirectTo: string = '/login') => {
+    try {
+      clearAuthStorage();
+      await auth.signOut();
+      
+      // Broadcast logout to other tabs
+      try {
+        localStorage.setItem('auth_logout', Date.now().toString());
+        localStorage.removeItem('auth_logout'); // Clean up immediately
+      } catch (error) {
+        console.warn('Could not broadcast logout:', error);
+      }
+      
+      navigate(redirectTo, { replace: true });
+    } catch (error) {
+      console.error('Sign out and redirect error:', error);
+      // Still navigate even if sign out failed
+      navigate(redirectTo, { replace: true });
+    }
+  }, [auth, navigate]);
 
   return {
     // Original auth context
@@ -165,6 +293,18 @@ export const useAuth = () => {
     accountAge,
     safeSignIn,
     safeSignOut,
+    
+    // Route protection utilities
+    canAccessRoute,
+    canAccessCurrentRoute,
+    isCurrentRouteProtected,
+    isCurrentRoutePublic,
+    secureNavigate,
+    navigateToLogin,
+    navigateAfterLogin,
+    shouldRedirectFromCurrentRoute,
+    trackActivity,
+    signOutAndRedirect,
   };
 };
 
